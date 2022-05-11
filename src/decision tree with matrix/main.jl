@@ -5,6 +5,8 @@ main:
 - Date: 2022-05-05
 =#
 
+include("../definitions.jl")
+
 function f(p, x)
     if(x < p[1])
         if (x < p[2])
@@ -25,8 +27,8 @@ function harness_f(p, x, y)
     return (f(p, x) - y)^2
 end
 
-function dag_f(p, inputs)
-    n = length(inputs)
+function dag_f(p, inputs) # meta-harness
+    n = size(inputs, 1)
     error = 0
     for i in 1:n
         error += harness_f(p, inputs[i][1], inputs[i][2])
@@ -40,6 +42,11 @@ using ForwardDiff
 
 function gradient_descent_from_one_initialization(the_dag, local_p)
     g(local_local_p) = ForwardDiff.gradient(the_dag, local_local_p)
+
+    #zygote.gradient
+    #julia slack #autodiff channel
+
+    # Optimisers.jl
 
     alpha = 0.001
     delta = 1
@@ -76,10 +83,10 @@ end
 
 function multi_gradient_descent(num_trials, the_dag, num_params)
 
-    all_final_errors = Array{Tuple{Float64, Int64}}(undef, num_trials);
-    all_ps = Array{Vector{Vector{Float64}}}(undef, num_trials);
-    for i in 1:num_trials
-        local_p = rand(num_params)
+    all_final_errors = Array{Tuple{MyFloat, Int64}}(undef, num_trials);
+    all_ps = Array{Vector{Vector{MyFloat}}}(undef, num_trials);
+    Threads.@threads for i in 1:num_trials
+        local_p = rand(MyFloat, num_params)
         local_error, final_p = gradient_descent_from_one_initialization(the_dag, local_p)
         all_final_errors[i] = (local_error, i)
         all_ps[i] = [final_p]
@@ -94,6 +101,8 @@ function multi_gradient_descent(num_trials, the_dag, num_params)
 
 end
 
+using Plots
+
 function plot_how_many_samples_you_need_for_solution()
     println("Threads.nthreads() ", Threads.nthreads())
 
@@ -104,22 +113,39 @@ function plot_how_many_samples_you_need_for_solution()
         return dag_f(local_p, inputs)
     end
 
-    for num_trials in 5:5:1000
+    println("--compile--")
+    final_error, final_p = multi_gradient_descent(1, curried_dag_f, num_params)
+    println("--run--")
+
+    xs = []
+    ys = []
+
+    for num_trials in 5:5:120
 
         function run_meta_trials(meta_trials)
-            errors = Array{Float64}(undef, meta_trials);
+            errors = Array{MyFloat}(undef, meta_trials);
             Threads.@threads for i in 1:meta_trials
                 final_error, final_p = multi_gradient_descent(num_trials, curried_dag_f, num_params)
                 errors[i] = final_error < 0.000001;
             end
+            println
             return sum(errors)/meta_trials
         end
 
-        t = @elapsed avg_error = run_meta_trials(36)
+        t = @elapsed avg_error = run_meta_trials(100)
+
+        push!(xs, num_trials)
+        push!(ys, avg_error)
 
         println("num_trials: ", num_trials, " avg error = ", avg_error, " t = ", t)
 
     end
+
+    p = plot(title = "How many trials you need to find global optimum \n case study: 7 parameter decision tree.", xaxis = "number of trials", yaxis = "% success")
+    plot!(p, xs, ys, label = "% chance of success")
+    display(p)
+
+    readline()
 end
 
 # plot_how_many_samples_you_need_for_solution()
@@ -254,3 +280,5 @@ num_trials: 105 avg error = 0.009375000683649836 t = 1.455822916
 # for i in 1:n
 #     println(f(final_p, inputs[i][1]), " ", inputs[i][2]);
 # end
+
+
