@@ -21,26 +21,28 @@ vectorization_v4:
 #     end
 
 function fs_v3!(ps, x; m, xs, mask1, mask2, not_mask1, mask3, ret)
-    xs = fill(x, m);
+
+    fill!(xs, x);
 
     #preallocate memory for mask1, mask2, mask3
     #use @. for applying . to all operators.
 
-    mask1 = xs .< ps[:,1];
-    mask2 = mask1 .&& (xs .< ps[:,2]);
-    not_mask1 = .!mask1
-    mask3 = not_mask1 .&& (xs .< ps[:,5]);  #try out .& vs .&&
-    ret = (mask2 .* ps[:,3] .+ mask1 .* (.!mask2) .* ps[:,4]) .+ (mask3 .* ps[:,6] .+ not_mask1 .* (.!mask3) .* ps[:,7]) # use @.
+    mask1 .= xs .< ps[:,1];
+    mask2 .= mask1 .&& (xs .< ps[:,2]);
+    not_mask1 .= .!mask1
+    mask3 .= not_mask1 .&& (xs .< ps[:,5]);  #try out .& vs .&&
+    ret .= (mask2 .* ps[:,3] .+ mask1 .* (.!mask2) .* ps[:,4]) .+ (mask3 .* ps[:,6] .+ not_mask1 .* (.!mask3) .* ps[:,7]) # use @.
 
 end
 
 function harness_fs_v3!(ps, x, y; m, ys, diff, square_diff, xs, mask1, mask2, not_mask1, mask3, ret)
     fs_v3!(ps, x; m, xs, mask1, mask2, not_mask1, mask3, ret);
-    ys = fill(y, m);
+    fill!(ys, y);
 
-    diff = ret .- ys
-    square_diff = diff .* diff;
+    diff .= ret .- ys
+    square_diff .= diff .* diff;
 end
+
 
 function dag_fs_v3(ps, inputs) # USE A MATRIX. views;
     n = length(inputs)
@@ -56,7 +58,8 @@ function dag_fs_v3(ps, inputs) # USE A MATRIX. views;
     mask3 = falses(m)
     ret = zeros(MyFloat, m)
     for i in 1:n
-        error = error .+ harness_fs_v3!(ps, inputs[i][1], inputs[i][2]; m, ys, diff, square_diff, xs, mask1, mask2, not_mask1, mask3, ret)
+        harness_fs_v3!(ps, inputs[i][1], inputs[i][2]; m, ys, diff, square_diff, xs, mask1, mask2, not_mask1, mask3, ret)
+        error .= error .+ square_diff
     end
     return error
 end
@@ -67,7 +70,7 @@ using BenchmarkTools
 # function test_rep_array_of_arrays(num_ps, num_params, the_dags_v0, the_dags_v1, the_dags_v2, the_dag)
 #     ps = Array{Array{MyFloat}}(undef, num_params) #THIS SHOULD BE A MATRIX
 #     # Inner loops need to be accross columns; column-major order; python had row-major order.
-#     # rand(MyFloat, MyFloat, n, m)
+#     # rand(MyFloat, n, m)
 #
 #     for i in 1:num_params
 #         ps[i] = rand(MyFloat, num_ps);
@@ -118,9 +121,8 @@ using BenchmarkTools
 
 function test_rep_matrix(num_ps, num_params, the_dags_v0, the_dags_v1, the_dags_v2, the_dags_v3, the_dag)
 
-    _ps = rand(MyFloat, MyFloat, num_ps, num_params)
+    _ps = rand(MyFloat, num_ps, num_params)
 
-    ps_rotated = _ps''
     ps = _ps
 
     function ground_truth_calc()
@@ -155,28 +157,28 @@ function test_rep_matrix(num_ps, num_params, the_dags_v0, the_dags_v1, the_dags_
 
     bench_gt = @benchmark error_ground_truth = $ground_truth_calc();
     println("gt ", bench_gt)
-    display(bench_gt)
-    println()
+#     display(bench_gt)
+#     println()
 
     bench_v0 = @benchmark error_predicted_v0 = $the_dags_v0($ps);
     println("v0 ", bench_v0)
-    display(bench_v0)
-    println()
+#     display(bench_v0)
+#     println()
 
     bench_v1 = @benchmark error_predicted_v1 = $the_dags_v1($ps);
     println("v1 ", bench_v1)
-    display(bench_v1)
-    println()
+#     display(bench_v1)
+#     println()
 
     bench_v2 = @benchmark error_predicted_v2 = $the_dags_v2($ps);
     println("v2 ", bench_v2)
-    display(bench_v2)
-    println()
+#     display(bench_v2)
+#     println()
 
     bench_v3 = @benchmark error_predicted_v3 = $the_dags_v3($ps);
     println("v3 ", bench_v3)
-    display(bench_v3)
-    println()
+#     display(bench_v3)
+#     println()
 
     println("summary")
     println("gt ", bench_gt)
@@ -197,7 +199,7 @@ include("vectorization_v0.jl")
 
 function run_test()
 
-    inputs = [[0, 0], [1/4, 1/4], [2/4, 2/4], [3/4, 3/4]]
+    inputs = Array{Array{MyFloat}}([[0, 0], [1/4, 1/4], [2/4, 2/4], [3/4, 3/4]])
     num_params = 7
 
     function curried_dag_f(p)
@@ -252,8 +254,85 @@ function run_test()
     v1 Trial(148.248 ms)
     v2 Trial(142.685 ms)
     v3 Trial(138.982 ms)
+
+    Float64
+    num_ps = 1000000
+    gt Trial(87.214 ms)
+    v0 Trial(295.898 ms)
+    v1 Trial(149.724 ms)
+    v2 Trial(140.976 ms)
+    v3 Trial(144.817 ms)
+
+    Float32
+    gt Trial(314.161 ms)
+    v0 Trial(290.122 ms)
+    v1 Trial(142.103 ms)
+    v2 Trial(121.408 ms)
+    v3 Trial(120.762 ms)
+
+    Float16
+    gt Trial(303.613 ms)
+    v0 Trial(292.137 ms)
+    v1 Trial(148.280 ms)
+    v2 Trial(145.426 ms)
+    v3 Trial(145.453 ms)
+
+    """
+
+    """
+    transposed
+    gt Trial(310.665 ms)
+    v0 Trial(311.859 ms)
+    v1 Trial(235.845 ms)
+    v2 Trial(218.540 ms)
+    v3 Trial(223.630 ms)
+
+    not transposed
+
+    gt Trial(302.747 ms)
+    v0 Trial(288.725 ms)
+    v1 Trial(147.555 ms)
+    v2 Trial(139.330 ms)
+    v3 Trial(143.135 ms)
     """
 
 end
 
 run_test();
+
+function lt_prealloc_for!(x, y, rez)
+    n = length(x)
+    @inbounds @simd for i in 1:n
+        rez[i] = x[i] < y[i]
+    end
+end
+
+function lt_prealloc!(x, y, rez)
+    rez .= x .< y
+end
+
+function lt(x, y)
+    rez = x .< y
+    return rez
+end
+
+function check_allocation()
+    n = 10000000
+    x = rand(n)
+    y = rand(n)
+    rez = rand(n)
+    b = @benchmark $lt_prealloc_for!($x, $y, $rez)
+    display(b)
+    println()
+    println()
+    b = @benchmark $lt_prealloc!($x, $y, $rez)
+    display(b)
+    println()
+    println()
+    b = @benchmark out = $lt($x, $y)
+    display(b)
+    println()
+    println()
+end
+
+# check_allocation()

@@ -109,7 +109,7 @@ using BenchmarkTools
 function test(num_ps, num_params, the_dags_v0, the_dags_v2, the_dag)
     ps = Array{Array{MyFloat}}(undef, num_params) #THIS SHOULD BE A MATRIX
     # Inner loops need to be accross columns; column-major order; python had row-major order.
-    # rand(MyFloat, MyFloat, n, m)
+    # rand(MyFloat, n, m)
 
     for i in 1:num_params
         ps[i] = rand(MyFloat, num_ps);

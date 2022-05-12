@@ -8,7 +8,7 @@ main:
 include("../definitions.jl")
 
 function f(p, x)
-    if(x < p[1])
+    @inbounds if(x < p[1])
         if (x < p[2])
             return p[3]
         else
@@ -62,24 +62,6 @@ function gradient_descent_from_one_initialization(the_dag, local_p)
     return error, local_p
 end
 
-
-
-
-# println("init eval:")
-# println("error: ", curried_dag_f(p))
-# n = length(inputs)
-# for i in 1:n
-#     println(f(p, inputs[i][1]), " ", inputs[i][2]);
-# end
-#
-# error, final_p = gradient_descent_from_one_initialization(curried_dag_f, p, inputs)
-#
-# println("final eval:")
-# println("error: ", curried_dag_f(final_p), " returned error: ", error)
-# n = length(inputs)
-# for i in 1:n
-#     println(f(p, inputs[i][1]), " ", inputs[i][2]);
-# end
 
 function multi_gradient_descent(num_trials, the_dag, num_params)
 

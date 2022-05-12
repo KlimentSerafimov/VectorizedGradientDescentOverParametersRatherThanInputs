@@ -5,4 +5,4 @@ definitions:
 - Date: 2022-05-11
 =#
 
-MyFloat = Float16
+MyFloat = Float64

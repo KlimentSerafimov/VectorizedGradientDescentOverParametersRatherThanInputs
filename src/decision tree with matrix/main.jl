@@ -8,7 +8,7 @@ main:
 include("../definitions.jl")
 
 function f(p, x)
-    if(x < p[1])
+    @inbounds if(x < p[1])
         if (x < p[2])
             return p[3]
         else

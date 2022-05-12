@@ -20,41 +20,38 @@ vectorization_v0:
 #         end
 #     end
 
-function fs_v0(ps, x) #is the length of ps static?
+function fs_v0_transposed(ps, x) #is the length of ps static?
 
-    m = length(ps);
+    m = length(ps[1])
 
     mask1 = Array{Bool}(undef, m); #not a great way
     @inbounds @simd for i in 1:m
-        mask1[i] = x < ps[i][1]
+        mask1[i] = x < ps[1][i]
     end
 
     mask2 = Array{Bool}(undef, m);
     @inbounds @simd for i in 1:m
-        mask2[i] = mask1[i] && x < ps[i][2]
+        mask2[i] = mask1[i] && x < ps[2][i]
     end
 
     mask3 = Array{Bool}(undef, m);
     @inbounds @simd for i in 1:m
-        mask3[i] = !mask1[i] && x < ps[i][5]
+        mask3[i] = !mask1[i] && x < ps[5][i]
     end
 
     ret = Array{MyFloat}(undef, m);
     @inbounds @simd for i in 1:m
-        ret[i] = mask1[i]*(mask2[i]*ps[i][3] + (!mask2[i])*ps[i][4]) + (!mask1[i])*(mask3[i]*ps[i][6] + (!mask3[i])*ps[i][7])
+        ret[i] = mask1[i]*(mask2[i]*ps[3][i] + (!mask2[i])*ps[4][i]) + (!mask1[i])*(mask3[i]*ps[6][i] + (!mask3[i])*ps[7][i])
     end
-
-#     println("typeof(ret) ", typeof(ret))
 
     return ret;
 
 
 end
 
-function harness_fs_v0(ps, x, y)
-    m = length(ps);
-    rezs = fs_v0(ps, x);
-    ys = Array{MyFloat}(undef, m)
+function harness_fs_v0_transposed(ps, x, y)
+    rezs = fs_v0_transposed(ps, x);
+    ys = Array{MyFloat}(undef, length(ps[1]))
     fill!(ys, y);
 
     diff = rezs .- ys
@@ -62,12 +59,12 @@ function harness_fs_v0(ps, x, y)
     return square_diff
 end
 
-function dag_fs_v0(ps, inputs)
-    m = length(ps);
+function dag_fs_v0_transposed(ps, inputs)
     n = length(inputs)
-    error = zeros(MyFloat, m)
+    error = zeros(MyFloat, length(ps[1]))
     for i in 1:n
-        error = error .+ harness_fs_v0(ps, inputs[i][1], inputs[i][2])
+        error = error .+ harness_fs_v0_transposed(ps, inputs[i][1], inputs[i][2])
     end
+#     println("typeof(error) ", typeof(error))
     return error
 end
