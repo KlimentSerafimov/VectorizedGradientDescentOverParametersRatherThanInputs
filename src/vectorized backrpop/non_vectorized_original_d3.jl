@@ -6,21 +6,34 @@ vectorized_dt:
 =#
 
 include("../definitions.jl")
-
-inputs = Array{Array{MyFloat}}([[0, 0], [1/4, 1/4], [2/4, 2/4], [3/4, 3/4]])
-num_params = 7
 function f(p, x)
-    @inbounds if(x < p[1])
-        if (x < p[2])
-            return p[3]
+    @inbounds if x < p[1]
+        if x < p[2]
+            if x < p[3]
+                return p[4]
+            else
+                return p[5]
+            end
         else
-            return p[4]
+            if x < p[6]
+                return p[7]
+            else
+                return p[8]
+            end
         end
     else
-        if(x < p[5])
-            return p[6]
+        if x < p[9]
+            if x < p[10]
+                return p[11]
+            else
+                return p[12]
+            end
         else
-            return p[7]
+            if x < p[13]
+                return p[14]
+            else
+                return p[15]
+            end
         end
     end
 end
@@ -48,18 +61,24 @@ function gradient_descent_from_one_initialization(the_dag, local_p, cutoff, do_p
 
     # Optimisers.jl
 
-    alpha = 0.01 # you can go up to 0.99 even, speeds up convergence
+    alpha = 0.3
     delta = 1
     error = the_dag(local_p)
 
     num_iters = 0
 
-    while(error > cutoff && delta > cutoff/10)
+    num_delta_below_cutoff = 0
+    max_num_delta_below_cutoff = 1
+
+    while(error > cutoff && num_delta_below_cutoff < max_num_delta_below_cutoff)
         prev_error = error
         local_p = local_p - alpha*g(local_p)
         error = the_dag(local_p)
         delta = prev_error-error
         num_iters+=1
+        if delta < cutoff/10
+            num_delta_below_cutoff += 1
+        end
         if do_print
             println("#", num_iters, " error ", error, " delta ", delta)
         end
@@ -79,6 +98,7 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
 #     Threads.@threads
     for i in 1:num_ps
         local_p = rand(MyFloat, num_params)
+        # print(local_p)
         local_error, final_p, local_num_iters = gradient_descent_from_one_initialization(the_dag, local_p, cutoff, false)
         errors[i] = local_error
         all_ps[i] = [final_p]
@@ -97,6 +117,8 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
         end
     end
 
+    # println("average num_iters ", floor(sum(num_iters)/num_ps), " final_error ", final_error, " final_p_id ", final_p_id)
+
     return final_error, all_ps[final_p_id], floor(sum(num_iters)/num_ps)
 #
 #     all_final_errors = sort(all_final_errors)
@@ -108,18 +130,21 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
 
 end
 
+# import Pkg; Pkg.add("Plots")
 using Plots
 
 function plot_how_many_samples_you_need_for_solution()
     println("Threads.nthreads() ", Threads.nthreads())
 
+    inputs = Array{Array{MyFloat}}([[0, 0], [1/8, 1/8], [2/8, 2/8], [3/8, 3/8], [4/8, 4/8], [5/8, 5/8], [6/8, 6/8], [7/8, 7/8]])
+    num_params = 15
     function curried_dag_f(local_p)
         return dag_f(local_p, inputs)
     end
 
     cutoff = 0.001
 
-    meta_trials = 100
+    meta_trials = 30
 
     println("--compile--")
     final_error, final_p = multi_gradient_descent(1, curried_dag_f, num_params, cutoff)
@@ -129,7 +154,7 @@ function plot_how_many_samples_you_need_for_solution()
     ys = []
 
 
-    for num_trials in 5:5:120
+    for num_trials in 250000:250000:3000000
 
         function run_meta_trials(meta_trials)
             is_success = Array{MyFloat}(undef, meta_trials);

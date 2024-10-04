@@ -7,20 +7,29 @@ vectorized_dt:
 
 include("../definitions.jl")
 
-inputs = Array{Array{MyFloat}}([[0, 0], [1/4, 1/4], [2/4, 2/4], [3/4, 3/4]])
-num_params = 7
+inputs = Array{Array{MyFloat}}([[0, 0], [1/6, 1/6], [2/6, 2/6], [3/6, 3/6], [4/6, 4/6], [5/6, 5/6]])
+num_params = 12
+
 function f(p, x)
-    @inbounds if(x < p[1])
-        if (x < p[2])
+    @inbounds if x < p[1]
+        if x < p[2]
             return p[3]
         else
             return p[4]
         end
     else
-        if(x < p[5])
-            return p[6]
+        if x < p[5]
+            if x < p[6]
+                return p[7]
+            else
+                return p[8]
+            end
         else
-            return p[7]
+            if x < p[9]
+                return p[10]
+            else
+                return p[11]
+            end
         end
     end
 end
@@ -48,18 +57,24 @@ function gradient_descent_from_one_initialization(the_dag, local_p, cutoff, do_p
 
     # Optimisers.jl
 
-    alpha = 0.01 # you can go up to 0.99 even, speeds up convergence
+    alpha = 0.3
     delta = 1
     error = the_dag(local_p)
 
     num_iters = 0
 
-    while(error > cutoff && delta > cutoff/10)
+    num_delta_below_cutoff = 0
+    max_num_delta_below_cutoff = 1
+
+    while(error > cutoff && num_delta_below_cutoff < max_num_delta_below_cutoff)
         prev_error = error
         local_p = local_p - alpha*g(local_p)
         error = the_dag(local_p)
         delta = prev_error-error
         num_iters+=1
+        if delta < cutoff/10
+            num_delta_below_cutoff += 1
+        end
         if do_print
             println("#", num_iters, " error ", error, " delta ", delta)
         end
@@ -71,7 +86,7 @@ function gradient_descent_from_one_initialization(the_dag, local_p, cutoff, do_p
 end
 
 
-function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
+function multi_gradient_descent(num_ps, the_dag, num_params, cutoff, print_flag)
 
     errors = Array{MyFloat}(undef, num_ps);
     all_ps = Array{Vector{Vector{MyFloat}}}(undef, num_ps);
@@ -79,6 +94,7 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
 #     Threads.@threads
     for i in 1:num_ps
         local_p = rand(MyFloat, num_params)
+        # print(local_p)
         local_error, final_p, local_num_iters = gradient_descent_from_one_initialization(the_dag, local_p, cutoff, false)
         errors[i] = local_error
         all_ps[i] = [final_p]
@@ -97,6 +113,10 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
         end
     end
 
+    if print_flag
+        println("average num_iters ", floor(sum(num_iters)/num_ps), " final_error ", final_error, " final_p_id ", final_p_id)
+    end
+
     return final_error, all_ps[final_p_id], floor(sum(num_iters)/num_ps)
 #
 #     all_final_errors = sort(all_final_errors)
@@ -108,6 +128,7 @@ function multi_gradient_descent(num_ps, the_dag, num_params, cutoff)
 
 end
 
+# import Pkg; Pkg.add("Plots")
 using Plots
 
 function plot_how_many_samples_you_need_for_solution()
@@ -119,23 +140,23 @@ function plot_how_many_samples_you_need_for_solution()
 
     cutoff = 0.001
 
-    meta_trials = 100
+    meta_trials = 30
 
     println("--compile--")
-    final_error, final_p = multi_gradient_descent(1, curried_dag_f, num_params, cutoff)
+    final_error, final_p = multi_gradient_descent(1, curried_dag_f, num_params, cutoff, false)
     println("--run--")
 
     xs = []
     ys = []
 
 
-    for num_trials in 5:5:120
+    for num_trials in 1000:1000:24000
 
         function run_meta_trials(meta_trials)
             is_success = Array{MyFloat}(undef, meta_trials);
             num_iters = Array{Int64}(undef, meta_trials);
             for i in 1:meta_trials
-                final_error, final_p, local_num_iters = multi_gradient_descent(num_trials, curried_dag_f, num_params, cutoff/10)
+                final_error, final_p, local_num_iters = multi_gradient_descent(num_trials, curried_dag_f, num_params, cutoff/10, false)
                 is_success[i] = final_error < cutoff;
                 num_iters[i] = local_num_iters
             end
@@ -151,7 +172,7 @@ function plot_how_many_samples_you_need_for_solution()
 
     end
 
-    p = plot(title = "How many trials you need to find global optimum \n case study: 7 parameter decision tree.", xaxis = "number of trials", yaxis = "% success")
+    p = plot(title = "How many trials you need to find global optimum \n case study: $num_params parameter decision tree. cutoff = $cutoff", xaxis = "number of trials", yaxis = "% success")
     plot!(p, xs, ys, label = "% chance of success")
     display(p)
 

@@ -172,6 +172,8 @@ function driver_dt_wrapper()
     println("init_error ", init_error)
 end
 
+# driver_dt_wrapper()
+
 function driver_gradient_descent()
     n = 7
     init_p = rand(MyFloat, n)
@@ -180,6 +182,8 @@ function driver_gradient_descent()
     println("final_error ", final_error)
     println("final_p ", final_p)
 end
+
+driver_gradient_descent()
 
 function driver_multi_gradient_descent()
     n = 7
@@ -414,11 +418,11 @@ function plot_xs_vs_ys(xaxis_name, xaxis_units, yaxis_name, data_xs_s, data_ys_s
 
 end
 
-function driver_plit_runtime_vs_average_error()
+function driver_plot_runtime_vs_average_error()
 
     data_xs_s = [
-        [0.220624291, 0.298234835, 0.421984776, 0.656963664, 1.086018741, 1.839878077, 3.154896856, # 5.539893427, 9.74070325, # 17.229247389, 30.206769983, 53.575674859],
-        [1.035536088, 1.531028402, 2.261934664, 3.009235635, 4.217542385, 5.708143581, 8.272503136, #11.162790875, 15.590694013, 21.623156169, #30.505902099, 42.96434712, 60.338082316, 83.335423626],
+        [0.220624291, 0.298234835, 0.421984776, 0.656963664, 1.086018741, 1.839878077, 3.154896856, 5.539893427, 9.74070325, 17.229247389, 30.206769983, 53.575674859],
+        [1.035536088, 1.531028402, 2.261934664, 3.009235635, 4.217542385, 5.708143581, 8.272503136, 11.162790875, 15.590694013, 21.623156169, 30.505902099, 42.96434712, 60.338082316, 83.335423626],
         [0.028327790000000002, 0.08155611, 0.32358861000000005, 0.88315981, 2.87407894, 9.03562879, 28.517210979999998, 89.49684094, 287.85801966, 908.13312835]
     ]
 
@@ -489,4 +493,4 @@ function driver_plit_runtime_vs_average_error()
 
 end
 
-driver_plit_runtime_vs_average_error()
+# driver_plot_runtime_vs_average_error()
